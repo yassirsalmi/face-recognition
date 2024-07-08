@@ -11,10 +11,8 @@ from keras_vggface.utils import preprocess_input
 from keras.layers import Input, Dense, Flatten
 from keras.models import Model, load_model
 from sklearn.preprocessing import LabelBinarizer
-import json
 from keras.models import model_from_json
-import h5py
-import zipfile
+
 
 
 # Setup logging
