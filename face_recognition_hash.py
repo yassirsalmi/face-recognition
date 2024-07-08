@@ -11,6 +11,11 @@ from keras_vggface.utils import preprocess_input
 from keras.layers import Input, Dense, Flatten
 from keras.models import Model, load_model
 from sklearn.preprocessing import LabelBinarizer
+import json
+from keras.models import model_from_json
+import h5py
+import zipfile
+
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -32,6 +37,7 @@ def extract_face(filename, required_size=(224, 224)):
             logging.error(f"No face detected in {filename}")
             return None
         x1, y1, width, height = results[0]['box']
+        x1, y1 = max(0, x1), max(0, y1)
         x2, y2 = x1 + width, y1 + height
         face = pixels[y1:y2, x1:x2]
         image = Image.fromarray(face)
@@ -84,16 +90,20 @@ def HashCode(embeddings, labels):
         A NumPy array representing the hash codes.
     """
     try:
+        if embeddings.shape[0] != labels.shape[0]:
+            raise ValueError("Number of embeddings does not match number of labels")
         lb = LabelBinarizer()
         lb.fit(labels)
         labels_binary = lb.transform(labels)
+        if labels_binary.shape[1] > 64:
+            raise ValueError("Too many classes for 64-bit hashing. Reduce the number of classes or increase hash size")
         labels_binary = np.tile(labels_binary, (1, 64 // labels_binary.shape[1]))
         input_layer = Input(shape=(embeddings.shape[1],))
         flatten_layer = Flatten()(input_layer)
-        output_layer = Dense(64, activation='sigmoid')(flatten_layer)  # 64-bit binary code
+        output_layer = Dense(64, activation='sigmoid')(flatten_layer)
         hash_model = Model(inputs=input_layer, outputs=output_layer)
         hash_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-        hash_model.fit(embeddings, labels_binary, epochs=10, batch_size=32) 
+        hash_model.fit(embeddings, labels_binary, epochs=10, batch_size=32)
         binary_codes = hash_model.predict(embeddings)
         return binary_codes, hash_model
     except Exception as e:
