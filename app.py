@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 import logging
 from PIL import Image
@@ -14,6 +15,8 @@ from sklearn.preprocessing import LabelBinarizer
 from flask import Flask, request, jsonify
 from kafka import KafkaProducer
 import json
+import subprocess
+
 
 # Initialize Kafka producer
 producer = KafkaProducer(bootstrap_servers=['localhost:9092'],
@@ -217,14 +220,19 @@ def find_similar():
     producer.send('similar_images_topic', {'query_image': image_path, 'similar_images': similar_images})
     
     return jsonify(similar_images)
+    
+def start_spark_job():
+    spark_submit = "C:/spark-3.5.1/bin/spark-submit" 
+    job_script = "./spark_sreaming_app.py" 
+    try:
+        print(f"Running: {spark_submit} {job_script}")
+        subprocess.Popen([spark_submit, job_script])
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
+    os.environ['PYSPARK_PYTHON'] = sys.executable
+    start_spark_job()
     if not os.path.exists('uploads'):
         os.makedirs('uploads')
     app.run(debug=True)
-
-
-
-
-
-
